@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta
+      name="viewport"
+      content="initial-scale=1,maximum-scale=1,user-scalable=no"
+    />
+    <meta name="description" content="[FeatureTable with popup interaction]" />
+    <title>Cadastre map</title>
+    <link
+      rel="stylesheet"
+      href="https://jsdev.arcgis.com/4.26/esri/css/main.css"
+    />
+    <script src="https://jsdev.arcgis.com/4.26/"></script>
+    <style>
+      html,
+      body {
+        padding: 0;
+        margin: 0;
+        height: 100%;
+        width: 100%;
+      }
+
+      #viewDiv {
+        flex: 1;
+        width: 100vw;
+        height: 100vh;
+      }
+
+      .esri-legend__symbol {
+        display: none;
+      }
+    </style>
+    <script>
+      require([
+        "esri/views/MapView",
+        "esri/Map",
+        "esri/layers/FeatureLayer",
+        "esri/renderers/SimpleRenderer",
+        "esri/PopupTemplate",
+        "esri/widgets/Legend",
+        "esri/widgets/Expand",
+        "esri/core/reactiveUtils",
+      ], function (
+        MapView,
+        Map,
+        FeatureLayer,
+        SimpleRenderer,
+        PopupTemplate,
+        Legend,
+        Expand,
+        reactiveUtils
+      ) {
+        // Esri color ramps - Red 3
+        // #ffefdc,#f5c5ab,#d15e3d,#b13925,#660202
+        const colors = ["#ffefdc", "#f5c5ab", "#d15e3d", "#b13925", "#660202"];
+
+        const renderer = new SimpleRenderer({
+          symbol: {
+            type: "simple-fill", // autocasts as new SimpleMarkerSymbol()
+            outline: {
+              color: [255, 255, 255, 0.7],
+              width: 0.5,
+            },
+          },
+          visualVariables: [
+            {
+              type: "color",
+              field: "G06_04_00_00_00",
+              stops: [
+                { value: 20, color: colors[0] },
+                { value: 35, color: colors[1] },
+                { value: 45, color: colors[2] },
+                { value: 55, color: colors[3] },
+                { value: 65, color: colors[4] },
+              ],
+              legendOptions: {
+                showLegend: true,
+                title: "",
+              },
+            },
+          ],
+        });
+
+        const layer = new FeatureLayer({
+          url: "https://services1.arcgis.com/nCKYwcSONQTkPA4K/ArcGIS/rest/services/Datos_de_Catastro/FeatureServer/0",
+          outFields: ["*"],
+          opacity: 0.7,
+          renderer: renderer,
+        });
+
+        const map = new Map({
+          basemap: "topo-vector",
+        });
+
+        map.add(layer);
+
+        const view = new MapView({
+          map: map,
+          container: "viewDiv",
+          zoom: 11,
+          center: [-0.890208, 41.63788],
+        });
+
+        view.when(() => {
+          let expand = new Expand({
+            view: view,
+            content: new Legend({
+              view: view,
+              layerInfos: [
+                {
+                  layer: layer,
+                  title: "Mean age of buildings (years)",
+                },
+              ],
+            }),
+            expanded: true,
+          });
+          view.ui.add(expand, "bottom-right");
+        });
+
+        function changeCursor(response) {
+          if (response.results.length > 0) {
+            document.getElementById("viewDiv").style.cursor = "pointer";
+          } else {
+            document.getElementById("viewDiv").style.cursor = "default";
+          }
+        }
+
+        function getGraphics(response) {
+          view.graphics.removeAll();
+          if (response.results.length > 0) {
+            var graphic = response.results[0].graphic;
+            graphic.symbol = {
+              type: "simple-fill",
+              style: "none",
+              outline: {
+                color: "orange",
+                width: 1,
+              },
+            };
+            view.graphics.add(graphic);
+          }
+        }
+
+        function showPopup(response) {
+          view.popup.close();
+          if (response.results.length > 0) {
+            view.popup.open({
+              title: "Code: " + response.results[0].graphic.attributes.Codigo,
+              content:
+                "<b>Mean age of buildings:</b> " +
+                response.results[0].graphic.attributes.G06_04_00_00_00 +
+                "<br/>" +
+                "<b>Total number of buildings:</b> " +
+                response.results[0].graphic.attributes.G06_02_01_00_00 +
+                "<br/>" +
+                "<b>Total number of family houses:</b> " +
+                response.results[0].graphic.attributes.G06_02_02_00_00 +
+                "<br/>" +
+                "<b>Average housing surface(m²):</b> " +
+                Number(
+                  response.results[0].graphic.attributes.G06_03_00_00_00
+                ).toFixed(2) +
+                "<br/>",
+              location: response.results[0].graphic.geometry.centroid,
+            });
+          }
+        }
+
+        view.when(function () {
+          view.whenLayerView(layer).then(function (lview) {
+            reactiveUtils.when(
+              () => !lview.updating,
+              () => {
+                view.on("pointer-move", (e) => {
+                  let screenPoint = {
+                    x: e.x,
+                    y: e.y,
+                  };
+
+                  view
+                    .hitTest(screenPoint, { include: layer })
+                    .then(function (response) {
+                      changeCursor(response);
+                      getGraphics(response);
+                      showPopup(response);
+                    });
+                });
+              }
+            );
+          });
+        });
+      });
+    </script>
+  </head>
+  <body>
+    <div id="viewDiv"></div>
+  </body>
+</html>

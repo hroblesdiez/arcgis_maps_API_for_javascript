@@ -1,0 +1,305 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta
+      name="description"
+      content="[Filter a layer with client-side rendering]"
+    />
+    <title>Oil Stations in Madrid</title>
+    <link
+      rel="stylesheet"
+      href="https://jsdev.arcgis.com/4.26/esri/css/main.css"
+    />
+    <script src="https://jsdev.arcgis.com/4.26/"></script>
+    <style>
+      html,
+      body,
+      #viewDiv {
+        padding: 0;
+        margin: 0;
+        height: 100%;
+        width: 100%;
+      }
+
+      .slider {
+        width: 100%;
+        height: 60px;
+      }
+
+      #infoDiv {
+        padding: 15px;
+        width: 400px;
+      }
+      #sliderDiv {
+        width: 100%;
+      }
+    </style>
+    <script>
+      require([
+        "esri/views/MapView",
+        "esri/Map",
+        "esri/layers/FeatureLayer",
+        "esri/PopupTemplate",
+        "esri/widgets/Legend",
+        "esri/request",
+        "esri/core/urlUtils",
+        "esri/widgets/Expand",
+        "esri/widgets/Slider",
+        "esri/widgets/BasemapToggle",
+        "esri/renderers/SimpleRenderer",
+      ], function (
+        MapView,
+        Map,
+        FeatureLayer,
+        PopupTemplate,
+        Legend,
+        esriRequest,
+        urlUtils,
+        Expand,
+        Slider,
+        BasemapToggle,
+        SimpleRenderer
+      ) {
+        let layer, featureLayerView;
+
+        const svgPath =
+          "M99.08,20.2c0.27,0.13,0.51,0.3,0.74,0.52c0.06,0.06,0.11,0.12,0.16,0.18c2.89,2.29,5.78,4.88,7.88,8 c2.32,3.45,3.61,7.44,2.83,12.17c-0.33,1.98-1.08,3.71-2.22,5.24c-0.82,1.09-1.82,2.05-3,2.89c-0.06,1.53-0.08,3.03-0.08,4.52 c0.01,1.91,0.07,3.88,0.18,5.9c0.25,4.74,0.96,9.52,1.67,14.26c0.76,5.1,1.52,10.16,1.72,15.43c0.27,6.75-0.53,12.3-2.76,16.22 c-2.48,4.38-6.51,6.72-12.45,6.51l0,0c-7.09-0.13-11.45-4.11-13.42-11.46c-1.72-6.43-1.46-15.61,0.49-27.16 c-0.06-9.15-1.25-16.08-3.61-20.75c-1.54-3.05-3.63-5.07-6.27-6.03v59.92c0.86,0.41,1.64,0.97,2.3,1.64 c1.52,1.52,2.47,3.63,2.47,5.95v5.98c0,1.51-1.23,2.74-2.74,2.74H2.74c-1.51,0-2.74-1.23-2.74-2.74v-5.98 c0-2.32,0.95-4.42,2.47-5.95c0.47-0.47,1-0.89,1.57-1.24V14.52c0-4,1.63-7.63,4.26-10.26C10.93,1.63,14.56,0,18.56,0h37.78 c4.01,0,7.66,1.64,10.3,4.28c2.64,2.64,4.28,6.29,4.28,10.31v26.36c4.86,1.06,8.57,4.17,11.15,9.27 c2.77,5.47,4.15,13.31,4.19,23.46c0,0.16-0.01,0.32-0.04,0.47h0.01c-1.85,10.87-2.15,19.35-0.63,25.02 c1.27,4.77,3.95,7.35,8.24,7.41h0.05l0,0c3.66,0.12,6.09-1.22,7.52-3.75c1.69-2.98,2.28-7.55,2.05-13.31 c-0.19-4.88-0.94-9.85-1.68-14.85c-0.72-4.82-1.44-9.68-1.71-14.78c-0.11-2.01-0.17-4.06-0.18-6.18c-0.01-1.68,0.02-3.34,0.09-4.97 c-5.11-4.48-8.22-8.96-9.18-13.42c-0.91-4.23,0.05-8.29,3-12.17c-2.25-1.54-4.54-2.8-6.86-3.81c-3.17-1.38-3.19-1.5-6.51-2.04 c-1.49-0.24-2.5-1.65-2.26-3.14c0.24-1.49,1.65-2.5,3.14-2.26c3.76,0.61,4.21,0.85,7.82,2.42C92.56,15.82,95.87,17.75,99.08,20.2 L99.08,20.2L99.08,20.2z M98.17,26.5c-1.91,2.56-2.55,5.12-1.99,7.7c0.67,3.12,3,6.44,6.88,9.95c0.39-0.35,0.74-0.72,1.03-1.11 c0.61-0.81,1.02-1.76,1.19-2.84c0.52-3.16-0.37-5.87-1.97-8.25C101.99,29.98,100.15,28.16,98.17,26.5L98.17,26.5L98.17,26.5z M21.86,12.54h31.82c1.65,0,3.15,0.67,4.24,1.76c0.07,0.08,0.15,0.15,0.22,0.24c0.96,1.07,1.55,2.48,1.55,4v20.3 c0,1.65-0.67,3.16-1.76,4.24c-1.08,1.08-2.58,1.76-4.24,1.76H21.86c-1.64,0-3.13-0.68-4.23-1.76l-0.01,0.01 c-1.08-1.08-1.76-2.59-1.76-4.24V18.53c0-1.65,0.67-3.15,1.76-4.24c0.08-0.07,0.15-0.15,0.24-0.21 C18.93,13.12,20.33,12.54,21.86,12.54L21.86,12.54L21.86,12.54z M68.43,111.48c-0.08,0.01-0.15,0.01-0.23,0.01H7.26 c-0.34,0.15-0.65,0.36-0.91,0.62c-0.53,0.53-0.86,1.26-0.86,2.07v3.24h64.74v-3.24c0-0.8-0.33-1.53-0.86-2.07 C69.1,111.84,68.78,111.63,68.43,111.48L68.43,111.48L68.43,111.48z";
+
+        const map = new Map({
+          basemap: "topo-vector",
+        });
+
+        const view = new MapView({
+          map: map,
+          container: "viewDiv",
+          center: [-3.662751, 40.42133],
+          zoom: 9,
+        });
+
+        const basemapToggle = new BasemapToggle({
+          view: view,
+          nextBasemap: "satellite",
+        });
+        view.ui.add(basemapToggle, "top-right");
+
+        const popUpOilStations = {
+          title: "Oil Station",
+          content:
+            "<b>Address:</b> {Dirección}<br><b>Oil Price:</b> {Precio_gas}<br><b> Timetable:</b> {Horario}<br><b>Longitud:</b> {Longitud}<br><b>Latitud:</b> {Latitud}",
+        };
+
+        const formatSliderLabel = (value, type) => {
+          return type === "value" ? value.toFixed(3) : value;
+        };
+
+        const slider = new Slider({
+          container: "sliderDiv",
+          min: 1.3,
+          max: 2,
+          values: [1.8],
+          steps: 0.001,
+          visibleElements: {
+            rangeLabels: true,
+            labels: true,
+          },
+          labelFormatFunction: formatSliderLabel,
+        });
+
+        view.ui.add("infoDiv", "bottom-left");
+
+        view.when(
+          function () {
+            // This function will execute once the promise is resolved
+            retrieveData()
+              .then(createGraphics)
+              .then(createLayer)
+              .then(createFilter)
+              .then(createLegend);
+          },
+          function (error) {
+            // This function will execute if the promise is rejected due to an error
+            console.log("Error");
+          }
+        );
+
+        //Get the data
+        function retrieveData() {
+          let url =
+            "https://services1.arcgis.com/nCKYwcSONQTkPA4K/ArcGIS/rest/services/Gasolineras_Pro/FeatureServer/0/query?where=Provincia%3D'MADRID'&outFields=*&f=pjson";
+          return esriRequest(url, {
+            responseType: "json",
+          });
+        }
+
+        //Create graphics
+        function createGraphics(response) {
+          let data = response.data;
+          // Create an array of Graphics from each  feature
+
+          return data.features.map(function (item, i) {
+            let { attributes, geometry } = item;
+            return {
+              geometry: {
+                type: "point",
+                x: geometry.x,
+                y: geometry.y,
+                spatialReference: {
+                  wkid: 102100,
+                  latestWkid: 3857,
+                },
+              },
+              attributes: {
+                FID: i,
+                Longitud: attributes.Longitud,
+                Latitud: attributes.Latitud,
+                Precio_gas: attributes.Precio_gas,
+                Dirección: attributes.Dirección,
+                Horario: attributes.Horario,
+              },
+            };
+          });
+        }
+
+        //Oil stations symbol
+        function createSymbol(type, color) {
+          return {
+            type: type || "simple-marker",
+            color: color,
+            outline: {
+              width: 0.3,
+              color: [0, 0, 0, 0.5],
+            },
+            path: svgPath,
+            size: "20px",
+          };
+        }
+
+        //Property "renderer" of the FeatureLayer
+
+        const colors = ["#d7191c", "#fdae61", "#a6d96a", "#1a9641"];
+
+        let renderer = new SimpleRenderer({
+          symbol: createSymbol("simple-marker", "dodgerblue"),
+          visualVariables: [
+            {
+              type: "color",
+              field: "Precio_gas",
+              stops: [
+                { value: 1.4, color: colors[3], label: "1.4€" },
+                { value: 1.5, color: colors[2], label: "1.5€" },
+                { value: 1.6, color: colors[1], label: "1.6€" },
+                { value: 1.7, color: colors[0], label: "1.7€" },
+              ],
+              legendOptions: {
+                showLegend: true,
+                title: "",
+              },
+            },
+            {
+              type: "size",
+              valueExpression: "$view.scale",
+              stops: [
+                { size: 12, value: 235307 },
+                { size: 9, value: 2930419 },
+                { size: 6, value: 6106250 },
+                { size: 3, value: 9505022 },
+              ],
+            },
+          ],
+        });
+
+        //Create layer
+        function createLayer(graphics) {
+          let oilStations = graphics.filter(
+            (item) => Number(item.attributes.Precio_gas) > 0
+          );
+
+          let fields = [
+            {
+              name: "FID",
+              alias: "FID",
+              type: "oid",
+            },
+            {
+              name: "Dirección",
+              alias: "Dirección",
+              type: "string",
+            },
+            {
+              name: "Longitud",
+              alias: "Longitud",
+              type: "double",
+            },
+            {
+              name: "Latitud",
+              alias: "Latitud",
+              type: "double",
+            },
+            {
+              name: "Precio_gas",
+              alias: "Precio_gas",
+              type: "double",
+            },
+            {
+              name: "Horario ",
+              alias: "Horario ",
+              type: "string",
+            },
+          ];
+
+          layer = new FeatureLayer({
+            source: oilStations,
+            fields: fields,
+            popupTemplate: popUpOilStations,
+            objectIdField: "FID",
+            renderer: renderer,
+            spatialReference: {
+              wkid: 102100,
+              latestWkid: 3857,
+            },
+            title: "Oil price (€)",
+          });
+          map.add(layer);
+          return layer;
+        }
+
+        //Create filter
+        function createFilter() {
+          view.whenLayerView(layer).then((layerView) => {
+            featureLayerView = layerView;
+
+            slider.on("thumb-drag", function (e) {
+              const value = parseFloat(slider.values[0]);
+              featureLayerView.filter = {
+                where: `Precio_gas <= ${value}`,
+              };
+            });
+          });
+        }
+
+        //Create legend and add it to view
+        function createLegend(layer) {
+          let expand = new Expand({
+            view: view,
+            content: new Legend({
+              view: view,
+            }),
+            expanded: true,
+          });
+          view.ui.add(expand, "bottom-right");
+        }
+      });
+    </script>
+  </head>
+
+  <body>
+    <div id="viewDiv"></div>
+    <div id="infoDiv" class="esri-widget">
+      <h3 class="esri-widget__heading">Oil Price</h3>
+      <br />
+      <div id="sliderDiv" class="slider"></div>
+    </div>
+  </body>
+</html>
