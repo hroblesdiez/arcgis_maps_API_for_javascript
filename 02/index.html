@@ -31,6 +31,33 @@
       .esri-legend__symbol {
         display: none;
       }
+
+      .esri-popup__content {
+        border: #ebebeb solid 1px;
+      }
+      .esri-popup__content span {
+        padding: 5px;
+      }
+      span:nth-child(odd) {
+        background: #ebebeb;
+        padding: 5px;
+      }
+
+      #titleDiv {
+        padding: 1rem;
+        box-shadow: rgba(0, 0, 0, 0.35) 0px 5px 15px;
+        margin-left: 1rem;
+        border-radius: 6px;
+      }
+
+      #titleText {
+        font-size: 20pt;
+        font-weight: 60;
+      }
+
+      .esri-ui-top-left {
+        flex-direction: row;
+      }
     </style>
     <script>
       require([
@@ -69,11 +96,11 @@
               type: "color",
               field: "G06_04_00_00_00",
               stops: [
-                { value: 20, color: colors[0] },
-                { value: 35, color: colors[1] },
-                { value: 45, color: colors[2] },
-                { value: 55, color: colors[3] },
-                { value: 65, color: colors[4] },
+                { value: 20, color: colors[0], label: 20 },
+                { value: 35, color: colors[1], label: 35 },
+                { value: 45, color: colors[2], label: 45 },
+                { value: 55, color: colors[3], label: 55 },
+                { value: 65, color: colors[4], label: 65 },
               ],
               legendOptions: {
                 showLegend: true,
@@ -102,6 +129,8 @@
           zoom: 11,
           center: [-0.890208, 41.63788],
         });
+
+        view.ui.add("titleDiv", "top-right");
 
         view.when(() => {
           let expand = new Expand({
@@ -150,20 +179,20 @@
             view.popup.open({
               title: "Code: " + response.results[0].graphic.attributes.Codigo,
               content:
-                "<b>Mean age of buildings:</b> " +
+                "<span><b>Mean age of buildings:</b> " +
                 response.results[0].graphic.attributes.G06_04_00_00_00 +
-                "<br/>" +
-                "<b>Total number of buildings:</b> " +
+                " years </span>" +
+                "<span><b>Total number of buildings:</b> " +
                 response.results[0].graphic.attributes.G06_02_01_00_00 +
-                "<br/>" +
-                "<b>Total number of family houses:</b> " +
+                "</span>" +
+                "<span><b>Total number of family houses:</b> " +
                 response.results[0].graphic.attributes.G06_02_02_00_00 +
-                "<br/>" +
-                "<b>Average housing surface(m²):</b> " +
+                "</span>" +
+                "<span><b>Average housing surface:</b> " +
                 Number(
                   response.results[0].graphic.attributes.G06_03_00_00_00
                 ).toFixed(2) +
-                "<br/>",
+                " m² </span>",
               location: response.results[0].graphic.geometry.centroid,
             });
           }
@@ -197,5 +226,8 @@
   </head>
   <body>
     <div id="viewDiv"></div>
+    <div id="titleDiv" class="esri-widget">
+      <div id="titleText">Real estate information in Zaragoza (Spain)</div>
+    </div>
   </body>
 </html>

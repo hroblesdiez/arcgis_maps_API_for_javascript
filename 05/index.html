@@ -1,0 +1,359 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta
+      name="viewport"
+      content="initial-scale=1,maximum-scale=1,user-scalable=no"
+    />
+    <title>
+      Query top features from a FeatureLayer | Sample | ArcGIS Maps SDK for
+      JavaScript 4.26
+    </title>
+    <script
+      type="module"
+      src="https://js.arcgis.com/calcite-components/1.0.7/calcite.esm.js"
+    ></script>
+    <link
+      rel="stylesheet"
+      type="text/css"
+      href="https://js.arcgis.com/calcite-components/1.0.7/calcite.css"
+    />
+    <link
+      rel="stylesheet"
+      href="https://js.arcgis.com/4.26/esri/themes/dark/main.css"
+    />
+    <script src="https://js.arcgis.com/4.26/"></script>
+
+    <style>
+      html,
+      body,
+      #viewDiv {
+        height: 100vh;
+        width: calc(100vw - 370px);
+        margin: 0;
+        padding: 0;
+      }
+
+      #infoDiv {
+        padding: 6px;
+        width: 370px;
+        height: 100%;
+        position: absolute;
+        top: 0px;
+        right: 0px;
+        --calcite-ui-brand: #71c96e;
+        --calcite-ui-brand-hover: #67b564;
+      }
+
+      #resultsDiv {
+        overflow: auto;
+        display: none;
+      }
+    </style>
+
+    <script>
+      require([
+        "esri/Map",
+        "esri/views/MapView",
+        "esri/layers/GeoJSONLayer",
+        "esri/symbols/WebStyleSymbol",
+        "esri/Basemap",
+        "esri/rest/support/TopFeaturesQuery",
+        "esri/rest/support/TopFilter",
+        "esri/config",
+      ], (
+        Map,
+        MapView,
+        GeoJSONLayer,
+        WebStyleSymbol,
+        Basemap,
+        TopFeaturesQuery,
+        TopFilter,
+        esriConfig
+      ) => {
+        let earthquakesLayerView;
+        const findBtn = document.getElementById("find");
+        const clearBtn = document.getElementById("clear");
+
+        // Esri color ramps - Orange 4
+        // #ffffb2,#fecc5c,#fd8d3c,#f03b20,#bd0026
+        const colors = ["#ffffb2", "#fecc5c", "#fd8d3c", "#f03b20", "#bd0026"];
+
+        //Settings for rendering the layer
+        const renderer = {
+          type: "simple",
+          field: "mag",
+          symbol: {
+            type: "simple-marker",
+            color: "orange",
+            outline: null,
+          },
+          visualVariables: [
+            {
+              type: "color",
+              field: "mag",
+              stops: [
+                {
+                  value: 1,
+                  color: colors[0],
+                  label: "<1",
+                },
+                {
+                  value: 2,
+                  color: colors[1],
+                  label: "1-2",
+                },
+                {
+                  value: 4,
+                  color: colors[2],
+                  label: "2-4",
+                },
+                {
+                  value: 6,
+                  color: colors[3],
+                  label: "4-6",
+                },
+                {
+                  value: 7,
+                  color: colors[4],
+                  label: "6-7",
+                },
+              ],
+            },
+            {
+              type: "size",
+              valueExpression: "$view.scale",
+              stops: [
+                { size: "60px", value: 100000 },
+                { size: "55px", value: 125000 },
+                { size: "50px", value: 150000 },
+                { size: "45px", value: 175000 },
+                { size: "40px", value: 225000 },
+                { size: "6px", value: 300000 },
+              ],
+            },
+          ],
+        };
+
+        //Function to get the year from the Unix timestamp format that it is in the json file
+        function getYear(time) {
+          return Number(
+            new Date(time).toLocaleDateString("en-US").split("/")[2]
+          );
+        }
+
+        const url =
+          "https://raw.githubusercontent.com/hroblesdiez/gis-data/main/earthquakes.json";
+
+        //After the response from the json file is received, change the time format ot show the year and add a key-value (depth-val) to the response.properties Object
+        esriConfig.request.interceptors.push({
+          urls: url,
+          after: function (response) {
+            if (
+              response.data.metadata?.url
+                ?.valueOf()
+                .toLowerCase()
+                .includes("fdsnws")
+            ) {
+              const geojson = response.data.features;
+              geojson.forEach((feature) => {
+                feature.properties.time = getYear(feature.properties.time);
+                feature.properties.depth = feature.geometry.coordinates[2];
+              });
+            } else {
+              console.log("Error");
+            }
+          },
+        });
+
+        //Pop-up template
+        const template = {
+          title: "{place}",
+          content: [
+            {
+              // Pass in the fields to display
+              type: "fields",
+              fieldInfos: [
+                {
+                  fieldName: "time",
+                  label: "Year",
+                },
+                {
+                  fieldName: "mag",
+                  label: "Magnitude",
+                },
+                {
+                  fieldName: "depth",
+                  label: "Depth",
+                },
+              ],
+            },
+          ],
+        };
+
+        //Create the GeoJSON layer
+        const layer = new GeoJSONLayer({
+          url: url,
+          copyright: "USGS Earthquakes",
+          title: "USGS Earthquakes",
+          popupTemplate: template,
+          renderer: renderer,
+          hasZ: true,
+          outFields: ["*"],
+        });
+
+        const basemap = "topo-vector";
+
+        const map = new Map({
+          basemap,
+          layers: [layer],
+        });
+
+        const view = new MapView({
+          container: "viewDiv",
+          map: map,
+          extent: {
+            xmin: -40.0,
+            ymin: 40.732686,
+            xmax: 35.319203,
+            ymax: 77.574533,
+          },
+          constraints: {
+            minZoom: 4,
+            maxZoom: 15,
+          },
+          padding: {
+            right: 380,
+          },
+          highlightOptions: {
+            color: "#1645ef",
+            haloOpacity: 0.9,
+            fillOpacity: 0.1,
+          },
+        });
+
+        function filterEarthquakes() {
+          clearBtn.appearance = "outline";
+          findBtn.appearance = "solid";
+
+          const selectedMagnitude =
+            Number(document.getElementById("magnitude").value) || 1;
+          const selectedYear =
+            Number(document.getElementById("year").value) || 2020;
+          const selectedDepth =
+            Number(document.getElementById("depth").value) || "<100";
+
+          earthquakesLayerView.filter = {
+            where:
+              "mag BETWEEN " +
+              Number(selectedMagnitude - 1) +
+              " AND " +
+              selectedMagnitude +
+              " AND time =  " +
+              selectedYear +
+              " AND depth <=  " +
+              selectedDepth +
+              "",
+          };
+        }
+
+        findBtn.addEventListener("click", filterEarthquakes);
+        clearBtn.addEventListener("click", clearFilter);
+
+        view.whenLayerView(layer).then((layerView) => {
+          // flash earthquakes layer loaded
+          // get a reference to the earthquakes layerview
+          // click event handler for earthquakes criteria
+          earthquakesLayerView = layerView;
+        });
+
+        //Clear the filter in layer and the options selected by user
+        function clearFilter() {
+          clearBtn.appearance = "solid";
+          findBtn.appearance = "outline";
+          earthquakesLayerView.filter = null;
+          document.getElementById("content").reset();
+          view.popup.close();
+        }
+      });
+    </script>
+  </head>
+
+  <body>
+    <div id="viewDiv"></div>
+    <calcite-panel id="infoDiv" class="calcite-mode-light">
+      <h3 class="heading" slot="header-content">Earthquakes in Europe:</h3>
+      <form id="content" style="padding: 5px">
+        <label>
+          Magnitude:
+          <calcite-select id="magnitude" scale="s" width="auto">
+            <calcite-option label="0-1" value="1"></calcite-option>
+            <calcite-option label="1-2" value="2"></calcite-option>
+            <calcite-option label="2-3" value="3"></calcite-option>
+            <calcite-option label="3-4" value="4"></calcite-option>
+            <calcite-option label="4-5" value="5"></calcite-option>
+            <calcite-option label="5-6" value="6"></calcite-option>
+            <calcite-option label="6-7" value="7"></calcite-option>
+            <calcite-option label="7-8" value="8"></calcite-option>
+            <calcite-option label="8-9" value="9"></calcite-option>
+          </calcite-select> </label
+        ><br />
+        <label>
+          Year:
+          <calcite-select id="year" scale="s" width="auto">
+            <calcite-option label="2020" value="2020"></calcite-option>
+            <calcite-option label="2021" value="2021"></calcite-option>
+            <calcite-option label="2022" value="2022"></calcite-option>
+          </calcite-select> </label
+        ><br />
+        <label>
+          Depth:
+          <calcite-select id="depth" scale="s" width="auto">
+            <calcite-option label="<5" value="5"></calcite-option>
+            <calcite-option label="5-10" value="10"></calcite-option>
+            <calcite-option label="10-30" value="30"></calcite-option>
+            <calcite-option label="30-50" value="50"></calcite-option>
+            <calcite-option label="50-70" value="70"></calcite-option>
+            <calcite-option label="70-90" value="90"></calcite-option>
+            <calcite-option label="90-100" value="100"></calcite-option>
+            <calcite-option label=">100" value="600"></calcite-option>
+          </calcite-select> </label
+        ><br />
+        <div
+          style="
+            width: 360px;
+            max-width: 100%;
+            display: flex;
+            flex-direction: row;
+          "
+        >
+          <calcite-button
+            id="find"
+            width="half"
+            appearance="solid"
+            alignment="center"
+            scale="s"
+          >
+            Find
+          </calcite-button>
+          <calcite-button
+            id="clear"
+            width="half"
+            appearance="outline"
+            alignment="center"
+            scale="s"
+          >
+            Clear
+          </calcite-button>
+        </div>
+      </form>
+      <calcite-panel id="resultsDiv">
+        <h3 class="heading" id="resultsHeading" slot="header-content">
+          Results
+        </h3>
+        <div id="results"></div>
+      </calcite-panel>
+    </calcite-panel>
+  </body>
+</html>

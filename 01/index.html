@@ -35,6 +35,22 @@
       #sliderDiv {
         width: 100%;
       }
+
+      #titleDiv {
+        padding: 1rem;
+        box-shadow: rgba(0, 0, 0, 0.35) 0px 5px 15px;
+        margin-left: 1rem;
+        border-radius: 6px;
+      }
+
+      #titleText {
+        font-size: 20pt;
+        font-weight: 60;
+      }
+
+      .esri-ui-top-left {
+        flex-direction: row;
+      }
     </style>
     <script>
       require([
@@ -86,8 +102,54 @@
 
         const popUpOilStations = {
           title: "Oil Station",
-          content:
-            "<b>Address:</b> {Dirección}<br><b>Oil Price:</b> {Precio_gas}<br><b> Timetable:</b> {Horario}<br><b>Longitud:</b> {Longitud}<br><b>Latitud:</b> {Latitud}",
+          content: [
+            {
+              // It is also possible to set the fieldInfos outside of the content
+              // directly in the popupTemplate. If no fieldInfos is specifically set
+              // in the content, it defaults to whatever may be set within the popupTemplate.
+              type: "fields",
+              fieldInfos: [
+                {
+                  fieldName: "Dirección",
+                  label: "Address:",
+                  format: {
+                    digitSeparator: true,
+                  },
+                },
+                {
+                  fieldName: "Precio_gas",
+                  label: "Oil Price (€):",
+                  format: {
+                    digitSeparator: true,
+                    places: 3,
+                  },
+                },
+                {
+                  fieldName: "Horario",
+                  label: "Timetibable:",
+                  format: {
+                    digitSeparator: true,
+                  },
+                },
+                {
+                  fieldName: "Longitud",
+                  label: "Longitude",
+                  format: {
+                    digitSeparator: true,
+                    places: 6,
+                  },
+                },
+                {
+                  fieldName: "Latitud",
+                  label: "Latitude",
+                  format: {
+                    digitSeparator: true,
+                    places: 6,
+                  },
+                },
+              ],
+            },
+          ],
         };
 
         const formatSliderLabel = (value, type) => {
@@ -108,6 +170,7 @@
         });
 
         view.ui.add("infoDiv", "bottom-left");
+        view.ui.add("titleDiv", "top-left");
 
         view.when(
           function () {
@@ -296,6 +359,9 @@
 
   <body>
     <div id="viewDiv"></div>
+    <div id="titleDiv" class="esri-widget">
+      <div id="titleText">Oil stations in Madrid (Spain)</div>
+    </div>
     <div id="infoDiv" class="esri-widget">
       <h3 class="esri-widget__heading">Oil Price</h3>
       <br />

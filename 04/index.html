@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta
+      name="viewport"
+      content="initial-scale=1,maximum-scale=1,user-scalable=no"
+    />
+    <title>Assets declared World Heritage by UNESCO in Spain</title>
+
+    <style>
+      html,
+      body {
+        padding: 0;
+        margin: 0;
+      }
+
+      #viewDiv {
+        width: 100vw;
+        height: 100vh;
+      }
+
+      #type-filter {
+        height: 160px;
+        width: 100%;
+        visibility: hidden;
+      }
+
+      .type-item {
+        width: 100%;
+        padding: 12px;
+        text-align: center;
+        vertical-align: baseline;
+        cursor: pointer;
+        height: 40px;
+      }
+
+      .active {
+        background-color: rgb(145, 223, 240);
+      }
+
+      .type-item:hover {
+        background-color: rgb(145, 223, 240);
+      }
+
+      #titleDiv {
+        padding: 10px;
+        box-shadow: rgba(0, 0, 0, 0.35) 0px 5px 15px;
+      }
+
+      #titleText {
+        font-size: 20pt;
+        font-weight: 60;
+      }
+    </style>
+
+    <link
+      rel="stylesheet"
+      href="https://js.arcgis.com/4.26/esri/themes/light/main.css"
+    />
+    <script src="https://js.arcgis.com/4.26/"></script>
+
+    <script>
+      require([
+        "esri/views/MapView",
+        "esri/Map",
+        "esri/layers/FeatureLayer",
+        "esri/PopupTemplate",
+        "esri/widgets/Legend",
+        "esri/widgets/Expand",
+        "esri/symbols/WebStyleSymbol",
+      ], function (
+        MapView,
+        Map,
+        FeatureLayer,
+        PopupTemplate,
+        Legend,
+        Expand,
+        WebStyleSymbol
+      ) {
+        let typeLayerView;
+
+        //Create instance of a map
+        const map = new Map({
+          basemap: "topo-vector",
+        });
+
+        //Create instance of a view of the map
+        let view = new MapView({
+          container: "viewDiv",
+          map: map,
+          extent: {
+            xmin: -906252.9531,
+            ymin: 2907751.3662,
+            xmax: 988150.8803,
+            ymax: 5098876.8523,
+            spatialReference: { wkid: 25830 },
+          },
+          popup: {
+            alignment: "auto",
+          },
+        });
+
+        //Pop-up settings
+        const popUpTemplate = {
+          title: "{Nombre}",
+          content:
+            "<div><b>Type:</b> {Tipo}</div><br><div><b>Year of registration:</b> {Año_inscripción}</div><br><div><b> Web:</b><a href='{web}'>{web}</a></div><br>",
+        };
+
+        //Renderer settings
+        let renderer = {
+          type: "unique-value",
+          legendOptions: {
+            title: "Asset type",
+          },
+          field: "Tipo",
+          uniqueValueInfos: [
+            {
+              value: "Cultural",
+              symbol: new WebStyleSymbol({
+                name: "place-of-worship",
+                styleName: "Esri2DPointSymbolsStyle",
+              }),
+              label: "Cultural",
+            },
+            {
+              value: "Natural",
+              symbol: new WebStyleSymbol({
+                name: "mountain",
+                styleName: "Esri2DPointSymbolsStyle",
+              }),
+              label: "Natural",
+            },
+            {
+              value: "Mixto",
+              symbol: new WebStyleSymbol({
+                name: "tear-pin-1",
+                styleName: "Esri2DPointSymbolsStyle",
+              }),
+              label: "Mixed",
+            },
+          ],
+        };
+
+        //Create layer and set the renderer
+        const layer = new FeatureLayer({
+          url: "https://services1.arcgis.com/nCKYwcSONQTkPA4K/ArcGIS/rest/services/Patrimonio_de_la_unesco/FeatureServer/0/",
+          outFields: ["*"],
+          renderer: renderer,
+          title: "Assets declared World Heritage by UNESCO in Spain",
+          popupTemplate: popUpTemplate,
+        });
+
+        // Add the layer to the map
+        view.map.add(layer);
+
+        //Grab buttons
+        const typeElement = document.getElementById("type-filter");
+        const typeItems = document.querySelectorAll(".type-item");
+
+        //Show in blue background the asset selected by user
+        function toggleActive(e) {
+          typeItems.forEach((item) => item.classList.remove("active"));
+          e.target.classList.add("active");
+        }
+
+        //Add background color to active item clicked by user
+        typeItems.forEach((item) =>
+          item.addEventListener("click", toggleActive)
+        );
+
+        view.whenLayerView(layer).then((layerView) => {
+          //get a reference to the type layerview
+          typeLayerView = layerView;
+
+          // set up UI items
+          typeElement.style.visibility = "visible";
+
+          // click event handler for asset choices
+          typeElement.addEventListener("click", filterByType);
+
+          //Filter assets according to user selection
+          function filterByType(e) {
+            const selectedType = e.target.getAttribute("data-type");
+            typeLayerView.filter = {
+              where: "Tipo = '" + selectedType + "'",
+            };
+          }
+
+          const typeExpand = new Expand({
+            view: view,
+            content: typeElement,
+            expandIconClass: "esri-icon-filter",
+            group: "top-left",
+          });
+
+          //clear the filters when user closes the expand widget
+          typeExpand.watch("expanded", () => {
+            if (!typeExpand.expanded) {
+              typeLayerView.filter = null;
+            }
+          });
+
+          let expand = new Expand({
+            view: view,
+            content: new Legend({
+              view: view,
+              respectLayerVisibility: false,
+            }),
+            expanded: true,
+          });
+          view.ui.add(expand, "bottom-left");
+
+          view.ui.add(typeExpand, "top-left");
+          view.ui.add("titleDiv", "top-right");
+        });
+      });
+    </script>
+  </head>
+  <body>
+    <div id="type-filter" class="esri-widget">
+      <div class="type-item visible-type" data-type="Cultural">Cultural</div>
+      <div class="type-item visible-type" data-type="Natural">Natural</div>
+      <div class="type-item visible-type" data-type="Mixto">Mixed</div>
+    </div>
+    <div id="viewDiv"></div>
+    <div id="titleDiv" class="esri-widget">
+      <div id="titleText">
+        Assets declared World Heritage by UNESCO in Spain
+      </div>
+    </div>
+  </body>
+</html>
